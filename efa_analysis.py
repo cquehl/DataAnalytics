@@ -303,6 +303,68 @@ def regress_factors_on_dv(factor_scores: pd.DataFrame, dv_values: pd.Series,
     }
 
 
+def plot_regression_coefficients(regression_results: dict, save_path: str = None):
+    """
+    Visualize regression coefficients with significance indicators.
+
+    Creates a horizontal bar chart showing:
+    - Beta coefficients for each factor (excluding intercept)
+    - Color-coding by statistical significance (p < 0.05)
+    - Error bars showing 95% confidence intervals
+    """
+    model = regression_results['model']
+    coeffs = regression_results['coefficients']
+    p_values = regression_results['p_values']
+
+    # Get confidence intervals (returns DataFrame with columns 0 and 1 for lower/upper)
+    conf_int = model.conf_int()
+
+    # Exclude the intercept (const) - we only want factor coefficients
+    factor_names = [name for name in coeffs.index if name != 'const']
+    factor_coeffs = coeffs[factor_names]
+    factor_pvals = p_values[factor_names]
+    factor_ci = conf_int.loc[factor_names]
+
+    # Calculate error bar sizes (distance from coefficient to CI bounds)
+    errors = np.array([
+        factor_coeffs.values - factor_ci[0].values,  # lower error
+        factor_ci[1].values - factor_coeffs.values   # upper error
+    ])
+
+    # Assign colors based on significance
+    colors = ['#2ecc71' if p < 0.05 else '#95a5a6' for p in factor_pvals]
+
+    plt.figure(figsize=(10, 6))
+
+    # Create horizontal bar chart
+    bars = plt.barh(factor_names, factor_coeffs, xerr=errors, color=colors,
+                    edgecolor='black', linewidth=0.5, capsize=4)
+
+    # Add reference line at zero
+    plt.axvline(x=0, color='black', linestyle='-', linewidth=0.8)
+
+    # Labels and title
+    plt.xlabel('Regression Coefficient (β)', fontsize=11)
+    plt.ylabel('Factor', fontsize=11)
+    plt.title(f'Factor Effects on {DEPENDENT_VARIABLE}\n(green = p < 0.05, gray = not significant)',
+              fontsize=12)
+
+    # Add coefficient values as text labels
+    for bar, coef, pval in zip(bars, factor_coeffs, factor_pvals):
+        x_pos = coef + (0.02 if coef >= 0 else -0.02)
+        ha = 'left' if coef >= 0 else 'right'
+        sig_marker = '*' if pval < 0.05 else ''
+        plt.text(x_pos, bar.get_y() + bar.get_height()/2,
+                 f'{coef:.3f}{sig_marker}', va='center', ha=ha, fontsize=9)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=150)
+        print(f"Regression coefficients plot saved to: {save_path}")
+    plt.close()
+
+
 # =============================================================================
 # MAIN EXECUTION
 # =============================================================================
@@ -366,11 +428,22 @@ if __name__ == "__main__":
     print("\n\nSTEP 10: Preparing Dependent Variable")
     print("-" * 50)
 
-    # Get the rows that weren't dropped during standardization
-    valid_indices = df[selected_vars].dropna().index
-    dv_data = df.loc[valid_indices, DEPENDENT_VARIABLE].reset_index(drop=True)
+    # Get indices where IVs are valid (matches what standardize_data used)
+    iv_valid_indices = df[selected_vars].dropna().index
 
-    print(f"DV: {DEPENDENT_VARIABLE}")
+    # Check which of those rows ALSO have valid DV values
+    dv_valid_mask = df.loc[iv_valid_indices, DEPENDENT_VARIABLE].notna().values
+
+    # Filter factor_scores to only include rows with valid DV
+    factor_scores_filtered = factor_scores[dv_valid_mask].reset_index(drop=True)
+    dv_data = df.loc[iv_valid_indices, DEPENDENT_VARIABLE][dv_valid_mask].reset_index(drop=True)
+
+    n_dropped = len(iv_valid_indices) - len(dv_data)
+    if n_dropped > 0:
+        print(f"  Note: Dropped {n_dropped} rows with NaN in {DEPENDENT_VARIABLE}")
+    print(f"  Final sample size for regression: {len(dv_data)}")
+
+    print(f"\nDV: {DEPENDENT_VARIABLE}")
     print(f"  Mean: {dv_data.mean():.4f}")
     print(f"  Std:  {dv_data.std():.4f}")
     print(f"  Min:  {dv_data.min():.4f}")
@@ -378,11 +451,11 @@ if __name__ == "__main__":
 
     # Step 11: Regression - which factors predict margin?
     print("\n\nSTEP 11: Regressing Factors on Margin")
-    regression_results = regress_factors_on_dv(factor_scores, dv_data)
+    regression_results = regress_factors_on_dv(factor_scores_filtered, dv_data)
 
-    # Step 12: Visualize loadings
-    print("\n\nSTEP 12: Visualizing Factor Loadings")
-    plot_factor_loadings(results['loadings'], f"{OUTPUT_DIR}/factor_loadings.png")
+    # Step 12: Visualize regression results
+    print("\n\nSTEP 12: Visualizing Regression Coefficients")
+    plot_regression_coefficients(regression_results, f"{OUTPUT_DIR}/regression_coefficients.png")
 
     # Save all results
     results['loadings'].to_csv(f"{OUTPUT_DIR}/factor_loadings.csv")
