@@ -2,8 +2,6 @@
 Path Diagram: IVs → Factors → DV
 Updated for the 1000-record dataset results
 """
-import os
-
 import matplotlib
 matplotlib.use('Agg')
 
@@ -142,6 +140,5 @@ ax.text(8, 10.7, '⚠️  Key Finding: Higher unit price/weight → LOWER margin
         ha='center', va='center', fontsize=10, fontweight='bold', color='#E65100')
 
 plt.tight_layout()
-os.makedirs('outputs', exist_ok=True)
 plt.savefig('outputs/path_diagram.png', dpi=150, bbox_inches='tight', facecolor='white')
 print("Path diagram saved to: outputs/path_diagram.png")
