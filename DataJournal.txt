@@ -1,0 +1,214 @@
+================================================================================
+                        EXPLORATORY FACTOR ANALYSIS JOURNAL
+                              Data Science Project Log
+                                   January 30, 2026
+================================================================================
+
+PROJECT GOAL
+------------
+Understand what factors predict MARGIN in manufacturing/steel quote data.
+Future goal: Test what affects CUSTOMER_TIER once that column is added.
+
+
+DATASET
+-------
+File: NerdClustersSharedData_2026-01-12-1020.csv
+Records: 1,000
+Variables: 34 columns
+
+Key numeric variables used:
+  - LINEITEMUNITPRICE      (price per unit: $2.21 - $6,414.29)
+  - LINEITEMTOTALPRICE     (total line price)
+  - ESTIMATETOTALPRICE     (total estimate value)
+  - ESTIMATETOTALQUANTITY  (quantity on estimate: 1 - 552)
+  - QTYPERLINEITEM         (quantity per line: 1 - 520)
+  - MATERIALUNITWEIGHT     (weight per unit: 1.88 - 8,168 lbs)
+  - MATERIALCENTWEIGHTCOST (cost per hundredweight: $40 - $137)
+
+Dependent Variable:
+  - MARGINACTUAL (4% - 60%, 34 unique values)
+
+
+================================================================================
+                              METHODOLOGY: EFA WORKFLOW
+================================================================================
+
+WHAT IS EFA?
+------------
+Exploratory Factor Analysis discovers "latent factors" - hidden constructs that
+explain why observed variables correlate with each other.
+
+THE PIPELINE:
+  IVs (measured) --> EFA --> Factors (latent) --> Regression --> DV (margin)
+
+STEP-BY-STEP:
+
+1. SELECT VARIABLES
+   Chose 7 order characteristic variables as Independent Variables (IVs)
+   Did NOT include margin variables (those are the DV we're predicting)
+
+2. STANDARDIZE DATA
+   Applied z-score normalization (mean=0, std=1) to put all variables on
+   equal footing. Essential because variables have different scales
+   (prices in hundreds vs. weights in thousands).
+
+3. CHECK FACTORABILITY
+   - Bartlett's Test: PASSED (p < 0.001) - data has correlations worth factoring
+   - KMO: 0.462 (poor) - some variables don't share much variance with others
+
+4. DETERMINE NUMBER OF FACTORS
+   - Kaiser Criterion (eigenvalue > 1): Suggested 2 factors
+   - Scree Plot: Confirmed 2-factor solution
+   - Total variance explained: 65.9%
+
+5. EXTRACT FACTORS WITH VARIMAX ROTATION
+   Varimax makes factors "simple" - each variable loads high on one factor
+   and low on others, making interpretation easier.
+
+6. CALCULATE FACTOR SCORES
+   Each of the 1,000 orders gets a score on each factor.
+   These scores become the new predictors for regression.
+
+7. REGRESS FACTORS ON MARGIN
+   Used OLS regression: MARGINACTUAL ~ Factor1 + Factor2
+
+
+================================================================================
+                                 KEY FINDINGS
+================================================================================
+
+FACTOR STRUCTURE (2 FACTORS)
+----------------------------
+
+FACTOR 1: "ORDER VOLUME"
+  - ESTIMATETOTALPRICE:     0.86 loading
+  - ESTIMATETOTALQUANTITY:  0.84 loading
+  - QTYPERLINEITEM:         0.76 loading
+  - LINEITEMTOTALPRICE:     0.75 loading
+
+  Interpretation: How BIG is the order? More quantity, higher totals.
+
+FACTOR 2: "UNIT CHARACTERISTICS"
+  - LINEITEMUNITPRICE:      1.00 loading
+  - MATERIALUNITWEIGHT:     0.99 loading
+
+  Interpretation: How EXPENSIVE/HEAVY is each unit? These two move together
+  almost perfectly (r = 0.98) - heavier materials cost more per unit.
+
+ORPHAN VARIABLE:
+  - MATERIALCENTWEIGHTCOST: 0.02 loading (communality = 0.016)
+  This variable doesn't fit either factor - it operates independently.
+
+
+REGRESSION RESULTS
+------------------
+
+                    Coefficient   p-value    Significant?
+  Factor 1 (Volume)    +0.11       0.740        NO
+  Factor 2 (Unit)      -1.40      <0.001       YES (negative!)
+
+  R-squared: 0.021 (only 2.1% of margin variance explained)
+
+
+INTERPRETATION
+--------------
+
+1. ORDER VOLUME DOESN'T AFFECT MARGIN
+   Big orders don't get better or worse margins than small orders.
+   Quantity/size of order is not a factor in margin decisions.
+
+2. UNIT CHARACTERISTICS NEGATIVELY PREDICT MARGIN
+   Higher unit price / heavier materials --> LOWER margin percentage
+
+   Possible explanations:
+   - Premium materials face more competitive pressure
+   - Cost-plus pricing with fixed markup (expensive items = lower %)
+   - Commoditization of high-end materials
+
+3. 97.9% OF MARGIN VARIANCE IS UNEXPLAINED
+   Order characteristics barely predict margin!
+   This suggests margin is driven by OTHER factors we didn't measure:
+   - Customer relationships / tier
+   - Sales rep discretion
+   - Competitive bidding situations
+   - Urgency / lead time
+   - Geographic factors
+
+
+================================================================================
+                               VISUAL OUTPUTS
+================================================================================
+
+Generated files in outputs/ directory:
+  - correlation_matrix.png   : Heatmap showing variable correlations
+  - scree_plot.png          : Eigenvalues for determining # of factors
+  - factor_loadings.png     : Heatmap of variable-factor relationships
+  - path_diagram.png        : IVs --> Factors --> DV flow diagram
+  - factor_loadings.csv     : Raw loading values
+  - communalities.csv       : Variance explained per variable
+  - factor_scores.csv       : Factor scores for all 1,000 observations
+
+
+================================================================================
+                                 NEXT STEPS
+================================================================================
+
+1. ADD CUSTOMER_TIER COLUMN
+   Test whether tier is a better predictor of margin than order characteristics.
+   Hypothesis: Customer tier will explain significantly more variance.
+
+2. EXPLORE PRICING BEHAVIOR
+   Dig deeper into the negative unit characteristics --> margin relationship.
+   Is this by design (pricing strategy) or an anomaly?
+
+3. INVESTIGATE ORDER COMPLEXITY
+   Add more variables: SHAPEGROUP, MATERIALTYPE, number of line items.
+   These categorical variables might reveal margin patterns.
+
+4. CONSIDER MIXED-EFFECTS MODEL
+   If data has hierarchical structure (orders within customers),
+   a mixed model might be more appropriate than simple OLS.
+
+
+================================================================================
+                              TECHNICAL NOTES
+================================================================================
+
+Python Environment:
+  - Python 3.13
+  - factor-analyzer 0.5.1
+  - scikit-learn 1.6.1
+  - statsmodels 0.14.6
+  - pandas 3.0.0
+
+Key Files:
+  - efa_analysis.py        : Main analysis script
+  - plot_path_diagram.py   : Path diagram visualization
+  - requirements.txt       : Dependencies
+
+Data Limitations Encountered:
+  - Initial dataset (73 records) had singular matrix issues due to
+    perfectly correlated variables (QTY was always 1)
+  - Switched to larger dataset (1,000 records) with varying quantities
+  - KMO still poor (0.462) - variables don't share ideal factor structure
+
+
+================================================================================
+                           CONCEPTUAL SUMMARY
+================================================================================
+
+THE CORE INSIGHT:
+
+  EFA asks: "Can I explain 7 correlated variables with fewer hidden causes?"
+  Answer:   "Yes - 2 factors (Order Volume + Unit Characteristics)"
+
+  Regression asks: "Do these hidden causes predict margin?"
+  Answer:          "Barely. Only Unit Characteristics matters, and negatively."
+
+  Business implication: Margin decisions are NOT driven by order specs.
+                       Look elsewhere (customer tier, relationships, etc.)
+
+
+================================================================================
+                                    END
+================================================================================
