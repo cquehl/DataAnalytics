@@ -11,10 +11,7 @@ import numpy as np
 from factor_analyzer import FactorAnalyzer
 from factor_analyzer.factor_analyzer import calculate_bartlett_sphericity, calculate_kmo
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-import config
+from . import config
 
 
 def check_factorability(scaled_data: np.ndarray, var_names: list[str]) -> dict:

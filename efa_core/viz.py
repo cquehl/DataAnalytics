@@ -12,10 +12,7 @@ matplotlib.use('Agg')  # Non-interactive backend for saving plots
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-import config
+from . import config
 
 
 def setup_style() -> None:

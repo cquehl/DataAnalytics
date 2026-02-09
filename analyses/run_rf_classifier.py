@@ -26,7 +26,13 @@ Outputs:
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Hybrid import: works both when pip-installed and when run directly
+try:
+    from efa_core import data, models, viz, output, config
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from efa_core import data, models, viz, output, config
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -35,9 +41,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-from efa_core import data, models, viz, output
-import config
 
 # =============================================================================
 # PARAMETERS

@@ -12,10 +12,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import cross_val_predict, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-import config
+from . import config
 
 
 def train_rf_classifier(
@@ -42,12 +39,22 @@ def train_rf_classifier(
     # Merge default params with any overrides
     rf_params = {**config.RF_PARAMS, **kwargs}
 
-    # Handle missing values
-    X_clean = X.fillna(0)
+    # Handle missing values: Drop rows without complete feature data.
+    # This excludes records where features are legitimately not applicable
+    # (e.g., operations/services without material weight).
+    # TODO: When operations data is added, consider separate models or
+    # a type indicator feature instead of dropping.
+    valid_mask = X.notna().all(axis=1)
+    X_clean = X[valid_mask]
+    y_clean = y[valid_mask]
+
+    n_dropped = len(X) - len(X_clean)
+    if n_dropped > 0:
+        print(f"Dropped {n_dropped} rows with missing feature values ({n_dropped/len(X)*100:.1f}%)")
 
     # Encode target
     le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
+    y_encoded = le.fit_transform(y_clean)
 
     # Scale features
     scaler = StandardScaler()
@@ -72,7 +79,8 @@ def train_rf_classifier(
     print("\n" + "=" * 60)
     print(f"RANDOM FOREST CLASSIFIER (cv={cv})")
     print("=" * 60)
-    print(f"\nOverall accuracy: {accuracy*100:.1f}%")
+    print(f"\nRecords used: {len(X_clean):,}")
+    print(f"Overall accuracy: {accuracy*100:.1f}%")
     print(f"CV scores: {cv_scores.round(3)} (mean: {cv_scores.mean():.3f})")
 
     return {
@@ -243,10 +251,23 @@ def predict_with_model(
         X_new: New features to predict
 
     Returns:
-        Array of predicted labels
+        Array of predicted labels (None for rows with missing feature values)
     """
-    X_clean = X_new.fillna(0)
-    X_scaled = scaler.transform(X_clean)
-    y_pred_encoded = model.predict(X_scaled)
-    y_pred_labels = encoder.inverse_transform(y_pred_encoded)
+    # Identify rows with complete data
+    valid_mask = X_new.notna().all(axis=1)
+    X_valid = X_new[valid_mask]
+
+    # Initialize results with None for all rows
+    y_pred_labels = np.array([None] * len(X_new), dtype=object)
+
+    if len(X_valid) > 0:
+        X_scaled = scaler.transform(X_valid)
+        y_pred_encoded = model.predict(X_scaled)
+        # Place predictions in correct positions
+        y_pred_labels[valid_mask.values] = encoder.inverse_transform(y_pred_encoded)
+
+    n_skipped = (~valid_mask).sum()
+    if n_skipped > 0:
+        print(f"Skipped {n_skipped} rows with missing values (no prediction)")
+
     return y_pred_labels

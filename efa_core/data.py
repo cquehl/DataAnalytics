@@ -10,10 +10,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from typing import Optional, Union
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-import config
+from . import config
 
 
 def load_csv(filepath: str = None) -> pd.DataFrame:
