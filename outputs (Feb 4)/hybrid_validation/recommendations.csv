@@ -1,0 +1,8 @@
+purchaser,assigned_tier,predicted_tier,win_rate,n_quotes,avg_estimate,Unit_Characteristics,Order_Value,Order_Volume,issue
+wescoweld.com,Tier_4,Tier_1,0.07857142857142857,140,491.195,-0.283,-0.047,-0.182,LOW WIN RATE - potential overpricing
+eavesconstruction.com,Tier_5,Tier_1,0.3425925925925926,108,2266.268,-0.033,-0.007,0.108,Factor profile mismatch
+thomasmachineandfab.com,Tier_3,Tier_1,0.15384615384615385,52,2837.411,0.295,0.166,0.409,Factor profile mismatch
+desfabco.com,Tier_3,Tier_1,0.14,50,7618.378,1.308,0.149,-0.19,LOW WIN RATE - potential overpricing
+davismachineworks.com,Tier_3,Tier_1,0.0,11,566.799,-0.184,0.024,-0.136,NEVER WINS - review pricing
+TYSONMETALWORKS.COM,Tier_3,Tier_1,0.0,8,1090.809,1.155,-0.095,-0.031,NEVER WINS - review pricing
+cahabatruck.com,Tier_5,Tier_2,1.0,5,1342.88,-0.101,-0.055,-0.173,ALWAYS WINS - leaving money on table?

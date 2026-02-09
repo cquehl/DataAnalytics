@@ -1,0 +1,13 @@
+PURCHASERCOMPANYNAME,assigned_tier,predicted_tier,match_rate,win_rate,n_quotes,avg_estimate,avg_margin,avg_Unit_Characteristics,avg_Order_Volume,avg_Order_Value
+southernsteel.biz,Tier_3,Tier_1,0.382,0.523,455,2181.842,12.84,0.119,0.627,0.028
+wescoweld.com,Tier_4,Tier_1,0.071,0.172,268,455.454,25.205,-0.316,-0.196,-0.031
+eavesconstruction.com,Tier_5,Tier_1,0.0,0.294,136,2450.698,33.919,0.035,0.043,-0.018
+thomasmachineandfab.com,Tier_3,Tier_1,0.202,0.168,119,2714.255,13.277,0.529,0.245,0.06
+desfabco.com,Tier_3,Tier_1,0.268,0.268,71,6111.408,9.761,0.991,-0.249,0.039
+davismachineworks.com,Tier_3,Tier_1,0.167,0.0,18,546.656,15.0,-0.198,-0.198,0.001
+RAYCOINDUSTRIAL.COM,Tier_3,Tier_1,0.333,0.067,15,3086.953,15.0,0.577,-0.224,0.168
+cahabatruck.com,Tier_5,Tier_1,0.0,1.0,12,1159.202,33.75,-0.105,-0.264,-0.051
+TYSONMETALWORKS.COM,Tier_3,Tier_1,0.222,0.0,9,1313.891,13.111,0.813,-0.075,0.005
+bluecreekironworks.com,Tier_3,Tier_1,0.0,0.0,4,157.012,14.0,-0.246,-0.382,-0.056
+alabamasteel,Tier_3,Tier_1,0.0,0.0,1,13.02,20.0,-0.107,-0.369,-0.163
+holleysteel.com,Tier_1,Tier_3,0.0,0.0,1,7073.8,5.0,0.377,-0.016,2.757

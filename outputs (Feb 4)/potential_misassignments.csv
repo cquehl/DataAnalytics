@@ -1,0 +1,7 @@
+PURCHASERCOMPANYNAME,assigned_tier,predicted_tier,match_rate,win_rate,n_quotes,avg_estimate,avg_margin
+wescoweld.com,Tier_4,Tier_1,0.114,0.07857142857142857,140,491.195,25.107
+eavesconstruction.com,Tier_5,Tier_1,0.009,0.3425925925925926,108,2266.268,34.287
+thomasmachineandfab.com,Tier_3,Tier_1,0.269,0.15384615384615385,52,2837.411,14.596
+davismachineworks.com,Tier_3,Tier_1,0.455,0.0,11,566.799,13.909
+TYSONMETALWORKS.COM,Tier_3,Tier_1,0.5,0.0,8,1090.809,13.25
+cahabatruck.com,Tier_5,Tier_1,0.0,1.0,5,1342.88,35.0

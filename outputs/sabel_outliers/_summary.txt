@@ -1,0 +1,75 @@
+======================================================================
+SABEL STEEL PRICE TIER OUTLIER ANALYSIS
+======================================================================
+
+Analysis Date: 2026-02-05 11:09
+Model Accuracy: 56.6%
+Total Purchasers: 15
+Outliers Identified: 12
+
+----------------------------------------------------------------------
+HIGH SEVERITY OUTLIERS (Requires Immediate Review)
+----------------------------------------------------------------------
+
+davismachineworks.com
+  Tier_3 → Tier_1
+  Win rate: 0%, Quotes: 18
+  💡 URGENT: Review pricing. 0% win rate suggests significant overpricing. Consider moving to Tier_1.
+
+RAYCOINDUSTRIAL.COM
+  Tier_3 → Tier_1
+  Win rate: 7%, Quotes: 15
+  💡 Review pricing. Low win rate (7%) suggests potential overpricing. Consider Tier_1.
+
+TYSONMETALWORKS.COM
+  Tier_3 → Tier_1
+  Win rate: 0%, Quotes: 9
+  💡 URGENT: Review pricing. 0% win rate suggests significant overpricing. Consider moving to Tier_1.
+
+bluecreekironworks.com
+  Tier_3 → Tier_1
+  Win rate: 0%, Quotes: 4
+  💡 URGENT: Review pricing. 0% win rate suggests significant overpricing. Consider moving to Tier_1.
+
+alabamasteel
+  Tier_3 → Tier_1
+  Win rate: 0%, Quotes: 1
+  💡 URGENT: Review pricing. 0% win rate suggests significant overpricing. Consider moving to Tier_1.
+
+holleysteel.com
+  Tier_1 → Tier_3
+  Win rate: 0%, Quotes: 1
+  💡 URGENT: Review pricing. 0% win rate suggests significant overpricing. Consider moving to Tier_3.
+
+----------------------------------------------------------------------
+MEDIUM SEVERITY OUTLIERS (Revenue Opportunities)
+----------------------------------------------------------------------
+
+cahabatruck.com
+  Tier_5 → Tier_1
+  Win rate: 100%, Quotes: 12
+  💡 Revenue opportunity. High win rate (100%) may indicate underpricing. Consider moving from Tier_5 toward Tier_1.
+
+----------------------------------------------------------------------
+LOW SEVERITY OUTLIERS (Factor Profile Mismatches)
+----------------------------------------------------------------------
+
+southernsteel.biz
+  Tier_3 → Tier_1
+  Win rate: 52%, Quotes: 455
+
+wescoweld.com
+  Tier_4 → Tier_1
+  Win rate: 17%, Quotes: 268
+
+eavesconstruction.com
+  Tier_5 → Tier_1
+  Win rate: 29%, Quotes: 136
+
+thomasmachineandfab.com
+  Tier_3 → Tier_1
+  Win rate: 17%, Quotes: 119
+
+desfabco.com
+  Tier_3 → Tier_1
+  Win rate: 27%, Quotes: 71
