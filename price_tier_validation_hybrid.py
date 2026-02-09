@@ -75,22 +75,23 @@ def load_data():
     tier_map = {t: f"Tier_{i+1}" for i, t in enumerate(tier_counts.index)}
     df['TIER'] = df['PRICETIERKEY'].map(tier_map)
 
-    # Load factor scores
-    if os.path.exists(FACTOR_SCORES_FILE):
-        factor_scores = pd.read_csv(FACTOR_SCORES_FILE, index_col=0)
-        print(f"Loaded factor scores: {len(factor_scores):,} records")
+    # Load factor scores (REQUIRED - this is a hybrid approach)
+    if not os.path.exists(FACTOR_SCORES_FILE):
+        raise FileNotFoundError(
+            f"\nFactor scores not found at: {FACTOR_SCORES_FILE}\n\n"
+            f"This hybrid analysis REQUIRES factor scores from EFA.\n"
+            f"Please run: python efa_price_tier.py\n"
+        )
 
-        # Rename factors for interpretability
-        factor_scores = factor_scores.rename(columns=FACTOR_NAMES)
+    factor_scores = pd.read_csv(FACTOR_SCORES_FILE, index_col=0)
+    print(f"Loaded factor scores: {len(factor_scores):,} records")
 
-        # Merge factor scores with main data
-        df = df.join(factor_scores, how='inner')
-        print(f"After merge: {len(df):,} records with factor scores")
-    else:
-        print(f"\nWARNING: Factor scores not found at {FACTOR_SCORES_FILE}")
-        print("Run efa_price_tier.py first to generate factor scores.")
-        print("Falling back to raw features only.\n")
-        factor_scores = None
+    # Rename factors for interpretability
+    factor_scores = factor_scores.rename(columns=FACTOR_NAMES)
+
+    # Merge factor scores with main data
+    df = df.join(factor_scores, how='inner')
+    print(f"After merge: {len(df):,} records with factor scores")
 
     return df, factor_scores
 
@@ -495,12 +496,11 @@ def main():
     # Create output directory
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # Step 1: Load data
+    # Step 1: Load data (factor_scores guaranteed by FileNotFoundError)
     df, factor_scores = load_data()
 
-    # Step 2: Prepare features (use factors if available, otherwise raw)
-    use_factors = factor_scores is not None
-    X, feature_names = prepare_features(df, use_factors=use_factors, use_raw=not use_factors)
+    # Step 2: Prepare features using EFA factors
+    X, feature_names = prepare_features(df, use_factors=True, use_raw=False)
 
     # Step 3: Train and validate
     df_top, importance, rf, le = train_and_validate(df, X, feature_names)
