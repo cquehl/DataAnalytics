@@ -1,0 +1,255 @@
+================================================================================
+                     INITIAL PRICE TIER VALIDATION FINDINGS
+                              February 3, 2026
+================================================================================
+
+EXECUTIVE SUMMARY
+-----------------
+We analyzed 2,264 quotes from Sabel Steel and coosasteel.com (Aug 25, 2025 -
+Feb 3, 2026) to validate whether price tier assignments make sense based on
+order characteristics.
+
+KEY FINDING: Tier assignments appear to be driven by factors BEYOND order
+characteristics (likely relationship/strategic factors). The model could only
+explain 65% of assignments using order data alone.
+
+
+================================================================================
+                              METHODOLOGY
+================================================================================
+
+WHAT WE DID (Plain English)
+---------------------------
+1. We looked at each quote's ORDER CHARACTERISTICS:
+   - How big is the estimate? (ESTIMATETOTALPRICE)
+   - How many units? (ESTIMATETOTALQUANTITY, QTYPERLINEITEM)
+   - What's the unit price? (LINEITEMUNITPRICE)
+   - How heavy is the material? (MATERIALUNITWEIGHT)
+   - What's the cost per hundredweight? (MATERIALCENTWEIGHTCOST)
+
+2. We asked: "Can we predict which Price Tier a quote belongs to just by
+   looking at these order characteristics?"
+
+3. We trained a Random Forest classifier (a machine learning model that
+   learns patterns from data) using cross-validation (the model is tested
+   on data it hasn't seen during training).
+
+4. For each purchaser, we compared:
+   - What tier are they ACTUALLY assigned to?
+   - What tier does the MODEL think they should be in?
+   - Do they match?
+
+
+WHY THIS MATTERS
+----------------
+If two purchasers have similar order patterns (size, price, quantity) but are
+in DIFFERENT tiers, one of two things is true:
+
+   A) The tier difference is INTENTIONAL (relationship factors, strategic
+      accounts, negotiation history - stuff not in the data)
+
+   B) The tier assignment might be WRONG and should be reviewed
+
+
+THE MODEL: Random Forest Classifier
+------------------------------------
+
+WHAT IS A DECISION TREE?
+   Imagine playing "20 Questions" to guess a tier:
+
+   Q1: "Is the estimate over $1,000?"
+       YES → Q2: "Is the unit weight over 200 lbs?"
+             YES → Predict Tier_3
+             NO  → Predict Tier_1
+       NO  → Q3: "Is the margin over 20%?"
+             YES → Predict Tier_2
+             NO  → Predict Tier_4
+
+   A decision tree learns WHICH questions to ask and WHERE to draw the
+   lines (why $1,000? why 200 lbs?) by looking at the training data.
+
+WHAT IS A RANDOM FOREST?
+   One tree can be "overconfident" - it memorizes quirks in the data.
+
+   A Random Forest creates 100 DIFFERENT trees, each trained on a
+   slightly different random sample of the data. Each tree learns
+   different patterns.
+
+   To make a prediction:
+   1. Show the quote to all 100 trees
+   2. Each tree votes: "I think this is Tier_X"
+   3. Final answer = whichever tier gets the most votes
+
+   This "wisdom of crowds" approach is more reliable than any single tree.
+
+   Example:
+      Tree 1 says: Tier_1
+      Tree 2 says: Tier_3
+      Tree 3 says: Tier_1
+      ...
+      Tree 100 says: Tier_1
+
+      If 73 trees say Tier_1 and 27 say Tier_3 → Predict Tier_1
+
+
+WHAT IS CROSS-VALIDATION?
+   Problem: If we train and test on the SAME data, the model just
+   memorizes the answers. That's cheating - it doesn't tell us how
+   well the model works on NEW data.
+
+   Solution: 5-Fold Cross-Validation
+
+   We split the 2,024 quotes into 5 equal groups (folds):
+
+   Round 1: Train on folds 2,3,4,5 → Test on fold 1 (predict 405 quotes)
+   Round 2: Train on folds 1,3,4,5 → Test on fold 2 (predict 405 quotes)
+   Round 3: Train on folds 1,2,4,5 → Test on fold 3 (predict 405 quotes)
+   Round 4: Train on folds 1,2,3,5 → Test on fold 4 (predict 405 quotes)
+   Round 5: Train on folds 1,2,3,4 → Test on fold 5 (predict 404 quotes)
+
+   Every quote gets a prediction from a model that NEVER saw that quote
+   during training. This gives us an honest measure of accuracy.
+
+   Our 65% accuracy means: when we show the model a quote it's never
+   seen before, it correctly guesses the tier 65% of the time.
+
+
+FEATURES USED (what the model sees)
+-----------------------------------
+   - ESTIMATETOTALPRICE (total quote value)
+   - ESTIMATETOTALQUANTITY (total units)
+   - QTYPERLINEITEM (units per line)
+   - LINEITEMUNITPRICE (price per unit)
+   - MATERIALUNITWEIGHT (weight per unit)
+   - MATERIALCENTWEIGHTCOST (cost per hundredweight)
+
+WHAT THE MODEL DOES NOT SEE
+---------------------------
+   - Purchaser name/identity
+   - Historical relationship
+   - Geographic factors
+   - Negotiation context
+   - Sales rep decisions
+
+   This is intentional. We WANT to know: "Based ONLY on order
+   characteristics, what tier should this quote be in?"
+
+   If the model predicts a different tier than assigned, it means the
+   order characteristics don't explain the assignment - something else
+   (relationship, strategy, etc.) must be driving it.
+
+
+================================================================================
+                              KEY FINDINGS
+================================================================================
+
+1. OVERALL MODEL ACCURACY: 65%
+------------------------------
+The model correctly predicts the assigned tier 65% of the time. This means
+35% of the time, the order characteristics suggest a DIFFERENT tier than
+what was assigned.
+
+Interpretation: Tier assignments are partially based on order characteristics,
+but other factors (relationships, strategy) play a big role.
+
+
+2. TIER-BY-TIER ACCURACY
+------------------------
+Tier_1:  79% correctly classified (725 quotes)
+Tier_2:  83% correctly classified (637 quotes)
+Tier_3:  47% correctly classified (409 quotes)
+Tier_4:  12% correctly classified (140 quotes) ← Model struggles here
+Tier_5:   3% correctly classified (113 quotes) ← Model struggles here
+
+Tier_4 and Tier_5 look almost identical to Tier_1 based on order data.
+This suggests these tiers are differentiated by NON-ORDER factors.
+
+
+3. PURCHASERS IN POTENTIAL WRONG TIER
+-------------------------------------
+These purchasers have order patterns that don't match their assigned tier:
+
+PURCHASER               | ASSIGNED | WIN RATE | MODEL SAYS | CONCERN
+------------------------|----------|----------|------------|--------
+wescoweld.com           | Tier_4   | 8%       | Tier_1     | Low wins
+thomasmachineandfab.com | Tier_3   | 15%      | Tier_1     | Low wins
+davismachineworks.com   | Tier_3   | 0%       | Tier_1     | NEVER wins
+TYSONMETALWORKS.COM     | Tier_3   | 0%       | Tier_1     | NEVER wins
+cahabatruck.com         | Tier_5   | 100%     | Tier_1     | Always wins!
+
+The 0% win rate purchasers are concerning - they may be over-priced.
+The 100% win rate purchaser may be getting too good a deal.
+
+
+4. TIER_1 PARADOX
+-----------------
+Tier_1 contains two purchasers with opposite outcomes:
+
+   contractors-steel.com:  360 quotes, 87% win rate, avg $3,984
+   marburysteel.com:       365 quotes,  0% win rate, avg $805
+
+Same tier, completely different results. One almost always wins, one never wins.
+This suggests Tier_1 may need to be split, or one is misassigned.
+Actually - one may use this just for quoting ***
+
+
+================================================================================
+                           RECOMMENDATIONS
+================================================================================
+
+1. REVIEW 0% WIN RATE PURCHASERS
+   - davismachineworks.com (Tier_3, 0% win rate)
+   - TYSONMETALWORKS.COM (Tier_3, 0% win rate)
+   - marburysteel.com (Tier_1, 0% win rate)
+
+   If these customers consistently lose quotes, their pricing may be too high.
+   Consider moving to a lower-margin tier to win more business.
+
+2. INVESTIGATE TIER_1 SPLIT
+   The huge difference between contractors-steel.com (87% wins) and
+   marburysteel.com (0% wins) suggests Tier_1 may be too broad.
+
+3. VALIDATE HIGH-WIN-RATE ACCOUNTS
+   - cahabatruck.com (Tier_5, 100% win rate) - Are we leaving money on table?
+   - contractors-steel.com (Tier_1, 87% win rate) - Same question
+
+4. CONSIDER ADDITIONAL DATA
+   The model only explains 65% of assignments. To improve predictions,
+   consider adding:
+   - Customer tenure/history
+   - Geographic region
+   - Industry segment
+   - Competitive landscape indicators
+
+
+================================================================================
+                           LIMITATIONS
+================================================================================
+
+1. The model can only see ORDER characteristics, not relationship factors.
+   A "misclassified" purchaser might be correctly assigned based on factors
+   we can't measure.
+
+2. Win rate can be affected by many factors beyond pricing (lead time,
+   service quality, competition in that customer's market).
+
+3. Small sample sizes for some purchasers may not be representative.
+
+4. The model assumes tier assignment SHOULD be based on order characteristics.
+   If the business intentionally uses other criteria, the model's
+   recommendations may not apply.
+
+
+================================================================================
+                              NEXT STEPS
+================================================================================
+
+1. Share findings with pricing team for business context
+2. Deep dive on 0% win rate accounts - why are they never winning?
+3. Analyze if high-margin tiers are systematically losing more quotes
+4. Consider adding customer relationship data to improve predictions
+
+
+================================================================================
+                                  END
+================================================================================

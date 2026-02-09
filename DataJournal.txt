@@ -182,9 +182,18 @@ Python Environment:
   - pandas 3.0.0
 
 Key Files:
-  - efa_analysis.py        : Main analysis script
-  - plot_path_diagram.py   : Path diagram visualization
-  - requirements.txt       : Dependencies
+  - efa_analysis.py                  : Original EFA → Margin analysis
+  - efa_price_tier.py                : EFA → Price Tier analysis (NEW)
+  - price_tier_validation.py         : Random Forest tier validation (NEW)
+  - price_tier_validation_hybrid.py  : Hybrid EFA + RF validation (NEW)
+  - plot_path_diagram.py             : Path diagram visualization
+  - requirements.txt                 : Dependencies
+
+Documentation Files:
+  - CLAUDE.md                        : Data schema (auto-loaded)
+  - DataJournal.txt                  : Analysis history (this file)
+  - Initial Price Tier Findings.txt  : RF methodology explained
+  - Hybrid Methodology Explained.txt : EFA + RF hybrid approach
 
 Data Limitations Encountered:
   - Initial dataset (73 records) had singular matrix issues due to
@@ -207,6 +216,133 @@ THE CORE INSIGHT:
 
   Business implication: Margin decisions are NOT driven by order specs.
                        Look elsewhere (customer tier, relationships, etc.)
+
+
+================================================================================
+                           DOMAIN KNOWLEDGE (Feb 3, 2026)
+================================================================================
+
+VARIABLE DEFINITIONS (from product owner)
+-----------------------------------------
+
+PRICE TIER SYSTEM:
+  - PRICETIERKEY: GUID representing price tier (max 12 tiers currently)
+  - Tiers are numerically ordered (1-12) but stored as GUIDs
+  - Drives the pricing engine that generates MARGINSYSTEMRECOMMENDED
+  - Goal: Use historical data to auto-assign tiers for suppliers who haven't
+    manually segmented their customers yet
+
+MARGIN VARIABLES:
+  - MARGINSYSTEMRECOMMENDED: What the pricing engine suggested
+  - MARGINUSERENTERED: What the sales rep actually set (not varying in this dataset)
+  - MARGINACTUAL: Final margin achieved
+  - MARGINDIFFERENCE: Delta between recommended and actual
+  - Note: In current dataset, no difference between system and user margin
+
+HIERARCHY STRUCTURE:
+  - Purchaser: Location → Company (umbrella)
+  - Supplier: Location → Company (umbrella)
+  - Both use KEY (GUID) and NAME fields
+
+LEAD TIME:
+  - Stored as Excel date serial number (looks like 8.64E+11)
+  - Convert by formatting as date in Excel
+  - Represents quote lead time
+
+TWO PREDICTION PROBLEMS:
+  1. Predict PRICETIERKEY - Customer segmentation/tiering
+  2. Predict ISWON - Quote win/loss prediction
+  These are separate but equally interesting analyses.
+
+MARGIN ENGINE TYPE:
+  - "basket" vs "line item" pricing
+  - Price breaks grouped by Material Type + Shape Group
+
+
+================================================================================
+                    PRICE TIER VALIDATION ANALYSIS (Feb 3, 2026)
+================================================================================
+
+OBJECTIVE
+---------
+Validate whether existing price tier assignments make sense based on order
+characteristics. Identify purchasers who may be in the wrong tier.
+
+
+DATA USED
+---------
+  - Dataset: Better_Data_Set_Feb3.csv
+  - Suppliers: Sabel Steel, coosasteel.com
+  - Date range: Aug 25, 2025 onwards
+  - Records: 2,264 quotes
+  - Tiers: 15 unique (top 5 analyzed = 89% of data)
+
+
+METHODOLOGY: HYBRID APPROACH
+----------------------------
+Combined two techniques:
+
+1. EXPLORATORY FACTOR ANALYSIS (EFA)
+   - Compressed 7 order variables into 3 interpretable factors
+   - Provides EXPLAINABILITY ("heavy units", "big orders", "high volume")
+
+2. RANDOM FOREST CLASSIFIER
+   - Uses factor scores to predict tier assignments
+   - Provides ACCURACY in identifying misassignments
+
+
+THE THREE FACTORS DISCOVERED
+----------------------------
+Factor 1: UNIT CHARACTERISTICS (42% importance)
+  - High loadings: MATERIALUNITWEIGHT (0.98), LINEITEMUNITPRICE (0.94)
+  - Interpretation: "Are these heavy, expensive units?"
+
+Factor 2: ORDER VALUE (30% importance)
+  - High loadings: LINEITEMTOTALPRICE (0.97), ESTIMATETOTALPRICE (0.70)
+  - Interpretation: "Is this a big dollar order?"
+
+Factor 3: ORDER VOLUME (28% importance)
+  - High loadings: ESTIMATETOTALQUANTITY (1.00), QTYPERLINEITEM (0.60)
+  - Interpretation: "Is this a high quantity order?"
+
+
+KEY FINDINGS
+------------
+1. All 3 factors significantly discriminate between tiers (p < 0.001)
+   - Unit Characteristics has the strongest effect (η² = 0.138)
+
+2. Model accuracy: 57% (using factors) vs 65% (using raw variables)
+   - Trade-off: Lost 8% accuracy, gained interpretability
+
+3. Tier profiles discovered:
+   - Tier_2 (0% win rate): LOW unit characteristics
+   - Tier_3 (44% win rate): HIGH unit characteristics + HIGH volume
+
+4. Flagged purchasers (potential misassignments):
+   - davismachineworks.com: 0% win rate, Tier_3 → suggests Tier_1
+   - TYSONMETALWORKS.COM: 0% win rate, HIGH unit characteristics
+   - wescoweld.com: 8% win rate, Tier_4 → suggests Tier_1
+   - cahabatruck.com: 100% win rate (leaving money on table?)
+*** There may be a business reason to describe the leakage ***
+
+OUTPUT FILES
+------------
+  outputs/efa_tier_analysis/
+    - factor_scores.csv          : Factor scores for each quote
+    - tier_factor_profiles.csv   : Mean factors by tier
+    - anova_results.csv          : Statistical significance tests
+
+  outputs/hybrid_validation/
+    - recommendations.csv        : Actionable items
+    - purchaser_analysis.csv     : Full purchaser breakdown
+    - quote_level_results.csv    : Every quote with prediction
+    - summary_report.txt         : Human-readable findings
+
+
+SCRIPTS TO RUN
+--------------
+  1. python efa_price_tier.py               # Generate factor scores
+  2. python price_tier_validation_hybrid.py # Run hybrid validation
 
 
 ================================================================================

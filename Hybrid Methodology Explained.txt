@@ -1,0 +1,203 @@
+================================================================================
+                    HYBRID METHODOLOGY: EFA + RANDOM FOREST
+                              February 3, 2026
+================================================================================
+
+THE HYBRID WORKFLOW
+-------------------
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ 7 Raw Variables │ ──► │  3 EFA Factors  │ ──► │  Random Forest  │
+│  (hard to       │     │  (interpretable)│     │  (predictions)  │
+│   explain)      │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                              │
+                              ▼
+                    "Heavy/expensive units"
+                    "Big dollar orders"
+                    "High quantity orders"
+
+
+================================================================================
+                              WHY HYBRID?
+================================================================================
+
+THE PROBLEM WITH RAW VARIABLES
+------------------------------
+If you use 7 variables directly in a model, you get:
+  - ESTIMATETOTALPRICE
+  - ESTIMATETOTALQUANTITY
+  - QTYPERLINEITEM
+  - LINEITEMUNITPRICE
+  - MATERIALUNITWEIGHT
+  - MATERIALCENTWEIGHTCOST
+  - LINEITEMTOTALPRICE
+
+Try explaining to a stakeholder: "The model weighted MATERIALUNITWEIGHT at
+0.21 and QTYPERLINEITEM at 0.18..." Their eyes glaze over.
+
+
+THE EFA SOLUTION
+----------------
+Exploratory Factor Analysis (EFA) asks: "Can we explain these 7 correlated
+variables with fewer hidden factors?"
+
+Answer: YES - 3 factors capture 71% of the information:
+
+  FACTOR 1: UNIT CHARACTERISTICS (42% importance)
+  ├── MATERIALUNITWEIGHT (loading: 0.98)
+  └── LINEITEMUNITPRICE (loading: 0.94)
+
+  Translation: "Are these heavy, expensive units?"
+
+
+  FACTOR 2: ORDER VALUE (30% importance)
+  ├── LINEITEMTOTALPRICE (loading: 0.97)
+  └── ESTIMATETOTALPRICE (loading: 0.70)
+
+  Translation: "Is this a big dollar order?"
+
+
+  FACTOR 3: ORDER VOLUME (28% importance)
+  ├── ESTIMATETOTALQUANTITY (loading: 1.00)
+  └── QTYPERLINEITEM (loading: 0.60)
+
+  Translation: "Is this a high quantity order?"
+
+
+THE TRADE-OFF
+-------------
+                        │ Raw Variables │ EFA Factors │
+  ──────────────────────┼───────────────┼─────────────┤
+  Accuracy              │     65%       │    57%      │
+  # of Features         │      7        │     3       │
+  Interpretability      │     Low       │    High     │
+  Stakeholder-friendly  │     No        │    Yes      │
+
+We lost 8% accuracy but gained the ability to EXPLAIN the model.
+
+
+================================================================================
+                         HOW TO EXPLAIN TO STAKEHOLDERS
+================================================================================
+
+INSTEAD OF:
+-----------
+"The model uses MATERIALUNITWEIGHT, LINEITEMUNITPRICE, LINEITEMTOTALPRICE,
+ESTIMATETOTALPRICE, ESTIMATETOTALQUANTITY, QTYPERLINEITEM, and
+MATERIALCENTWEIGHTCOST to predict tier assignments with 65% accuracy."
+
+SAY THIS:
+---------
+"We found three main patterns in order characteristics:
+
+   1. UNIT CHARACTERISTICS - How heavy and expensive are the individual units?
+   2. ORDER VALUE - How big is the total dollar amount?
+   3. ORDER VOLUME - How many units are being ordered?
+
+These three patterns explain most of the variation in orders. When we use
+them to predict price tier assignments, we're right about 57% of the time.
+
+When the model disagrees with an assignment, it means that customer's orders
+don't match the typical profile for their tier."
+
+
+EXAMPLE EXPLANATION:
+--------------------
+"TYSONMETALWORKS.COM orders heavy, expensive units (high Unit Characteristics
+score of +1.16). That profile typically maps to Tier_1 or Tier_2, but they're
+assigned to Tier_3. They have a 0% win rate - they never win quotes.
+
+This suggests they might be overpriced for their order profile. Consider
+moving them to a lower-margin tier."
+
+
+================================================================================
+                              THE THREE FACTORS
+================================================================================
+
+FACTOR 1: UNIT CHARACTERISTICS
+------------------------------
+What it measures:
+  - How heavy is each unit? (MATERIALUNITWEIGHT)
+  - How expensive is each unit? (LINEITEMUNITPRICE)
+
+High scores mean:
+  - Heavy materials (steel plate vs. thin sheet)
+  - Expensive per-unit pricing
+
+Low scores mean:
+  - Light materials
+  - Cheap per-unit pricing
+
+Business interpretation:
+  - Premium/specialty materials tend to have HIGH unit characteristics
+  - Commodity/standard materials tend to have LOW unit characteristics
+
+
+FACTOR 2: ORDER VALUE
+---------------------
+What it measures:
+  - How big is the line item total? (LINEITEMTOTALPRICE)
+  - How big is the overall estimate? (ESTIMATETOTALPRICE)
+
+High scores mean:
+  - Large dollar amount orders
+  - Big projects
+
+Low scores mean:
+  - Small dollar amount orders
+  - Minor purchases
+
+Business interpretation:
+  - Major construction projects = HIGH order value
+  - Small repair jobs = LOW order value
+
+
+FACTOR 3: ORDER VOLUME
+----------------------
+What it measures:
+  - How many total units? (ESTIMATETOTALQUANTITY)
+  - How many units per line? (QTYPERLINEITEM)
+
+High scores mean:
+  - Bulk orders
+  - High quantities
+
+Low scores mean:
+  - Small quantity orders
+  - One-off purchases
+
+Business interpretation:
+  - Inventory stocking = HIGH order volume
+  - Custom/special orders = LOW order volume
+
+
+================================================================================
+                              SCRIPTS TO RUN
+================================================================================
+
+1. FIRST: Run the EFA analysis to generate factor scores
+
+   python efa_price_tier.py
+
+   Output: outputs/efa_tier_analysis/factor_scores.csv
+
+
+2. THEN: Run the hybrid validation using those factor scores
+
+   python price_tier_validation_hybrid.py
+
+   Output: outputs/hybrid_validation/
+
+
+3. OPTIONAL: Run the original Random Forest with raw features (for comparison)
+
+   python price_tier_validation.py
+
+   Output: outputs/
+
+
+================================================================================
+                                    END
+================================================================================

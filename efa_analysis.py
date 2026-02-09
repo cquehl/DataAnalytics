@@ -371,7 +371,7 @@ def plot_regression_coefficients(regression_results: dict, save_path: str = None
 
 if __name__ == "__main__":
     # Configuration
-    DATA_PATH = "Data/NerdClustersSharedData_2026-01-12-1020.csv"
+    DATA_PATH = "Data/Decent_Data_Set_Feb3.csv"
     OUTPUT_DIR = "outputs"
 
     # Create output directory
@@ -389,24 +389,61 @@ if __name__ == "__main__":
     selected_vars = select_variables_for_efa(df)
     print(f"Selected {len(selected_vars)} variables: {selected_vars}")
 
+    # Save data summary (Steps 1-2)
+    data_summary = pd.DataFrame({
+        'Metric': ['Total_Records', 'Total_Columns', 'Selected_Variables', 'Variable_List'],
+        'Value': [len(df), len(df.columns), len(selected_vars), ', '.join(selected_vars)]
+    })
+    data_summary.to_csv(f"{OUTPUT_DIR}/step_01_02_data_summary.csv", index=False)
+    print(f"Data summary saved to: {OUTPUT_DIR}/step_01_02_data_summary.csv")
+
     # Step 3: Standardize
     print("\n\nSTEP 3: Standardizing Data")
     print("-" * 50)
     scaled_data, scaled_df = standardize_data(df, selected_vars)
 
+    # Save standardized data (Step 3)
+    scaled_df.to_csv(f"{OUTPUT_DIR}/step_03_standardized_data.csv", index=False)
+    print(f"Standardized data saved to: {OUTPUT_DIR}/step_03_standardized_data.csv")
+
+    # Update data summary with records after NaN removal
+    data_summary.loc[data_summary['Metric'] == 'Total_Records', 'Value'] = f"{len(df)} (raw), {len(scaled_df)} (after NaN removal)"
+    data_summary.to_csv(f"{OUTPUT_DIR}/step_01_02_data_summary.csv", index=False)
+
     # Step 4: Check if data is suitable for EFA
     print("\n\nSTEP 4: Checking Factorability")
     factorability = check_factorability(scaled_data, selected_vars)
 
+    # Save factorability tests (Step 4)
+    def get_kmo_label(kmo):
+        if kmo >= 0.9: return "Marvelous"
+        elif kmo >= 0.8: return "Meritorious"
+        elif kmo >= 0.7: return "Middling"
+        elif kmo >= 0.6: return "Mediocre"
+        elif kmo >= 0.5: return "Miserable"
+        else: return "Unacceptable"
+
+    factorability_rows = [
+        {'Test': 'Bartlett_Chi_Square', 'Value': factorability['bartlett_chi_square'], 'Interpretation': ''},
+        {'Test': 'Bartlett_p_value', 'Value': factorability['bartlett_p_value'], 'Interpretation': 'PASS' if factorability['bartlett_p_value'] < 0.05 else 'FAIL'},
+        {'Test': 'KMO_Overall', 'Value': factorability['kmo_overall'], 'Interpretation': get_kmo_label(factorability['kmo_overall'])},
+    ]
+    for var, kmo in factorability['kmo_per_variable'].items():
+        factorability_rows.append({'Test': f'KMO_{var}', 'Value': kmo, 'Interpretation': get_kmo_label(kmo)})
+
+    factorability_df = pd.DataFrame(factorability_rows)
+    factorability_df.to_csv(f"{OUTPUT_DIR}/step_04_factorability_tests.csv", index=False)
+    print(f"Factorability tests saved to: {OUTPUT_DIR}/step_04_factorability_tests.csv")
+
     # Step 5: Visualize correlations
     print("\n\nSTEP 5: Correlation Matrix")
     print("-" * 50)
-    corr_matrix = plot_correlation_matrix(scaled_df, f"{OUTPUT_DIR}/correlation_matrix.png")
+    corr_matrix = plot_correlation_matrix(scaled_df, f"{OUTPUT_DIR}/step_05_correlation_matrix.png")
 
     # Step 6: Determine number of factors
     print("\n\nSTEP 6: Determining Number of Factors")
     eigenvalues, suggested_factors = determine_num_factors(
-        scaled_data, selected_vars, f"{OUTPUT_DIR}/scree_plot.png"
+        scaled_data, selected_vars, f"{OUTPUT_DIR}/step_06_scree_plot.png"
     )
 
     # Step 7: Run factor analysis
@@ -416,7 +453,7 @@ if __name__ == "__main__":
 
     # Step 8: Visualize loadings
     print("\n\nSTEP 8: Visualizing Factor Loadings")
-    plot_factor_loadings(results['loadings'], f"{OUTPUT_DIR}/factor_loadings.png")
+    plot_factor_loadings(results['loadings'], f"{OUTPUT_DIR}/step_08_factor_loadings.png")
 
     # Step 9: Calculate factor scores
     print("\n\nSTEP 9: Calculating Factor Scores")
@@ -453,14 +490,42 @@ if __name__ == "__main__":
     print("\n\nSTEP 11: Regressing Factors on Margin")
     regression_results = regress_factors_on_dv(factor_scores_filtered, dv_data)
 
+    # Save regression results (Steps 10-11)
+    model = regression_results['model']
+    coef_data = {
+        'Variable': list(model.params.index),
+        'Coefficient': list(model.params.values),
+        'Std_Error': list(model.bse.values),
+        't_statistic': list(model.tvalues.values),
+        'p_value': list(model.pvalues.values),
+        'CI_Lower': list(model.conf_int()[0].values),
+        'CI_Upper': list(model.conf_int()[1].values),
+        'Significant': ['Yes' if p < 0.05 else 'No' for p in model.pvalues.values]
+    }
+    coef_df = pd.DataFrame(coef_data)
+
+    # Add model summary rows
+    summary_data = [
+        {'Variable': '--- MODEL FIT ---', 'Coefficient': '', 'Std_Error': '', 't_statistic': '', 'p_value': '', 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+        {'Variable': 'R_squared', 'Coefficient': model.rsquared, 'Std_Error': '', 't_statistic': '', 'p_value': '', 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+        {'Variable': 'Adj_R_squared', 'Coefficient': model.rsquared_adj, 'Std_Error': '', 't_statistic': '', 'p_value': '', 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+        {'Variable': 'F_statistic', 'Coefficient': model.fvalue, 'Std_Error': '', 't_statistic': '', 'p_value': model.f_pvalue, 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+        {'Variable': 'N_observations', 'Coefficient': int(model.nobs), 'Std_Error': '', 't_statistic': '', 'p_value': '', 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+        {'Variable': 'DV_Mean', 'Coefficient': dv_data.mean(), 'Std_Error': '', 't_statistic': '', 'p_value': '', 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+        {'Variable': 'DV_Std', 'Coefficient': dv_data.std(), 'Std_Error': '', 't_statistic': '', 'p_value': '', 'CI_Lower': '', 'CI_Upper': '', 'Significant': ''},
+    ]
+    regression_output = pd.concat([coef_df, pd.DataFrame(summary_data)], ignore_index=True)
+    regression_output.to_csv(f"{OUTPUT_DIR}/step_10_11_regression_results.csv", index=False)
+    print(f"Regression results saved to: {OUTPUT_DIR}/step_10_11_regression_results.csv")
+
     # Step 12: Visualize regression results
     print("\n\nSTEP 12: Visualizing Regression Coefficients")
-    plot_regression_coefficients(regression_results, f"{OUTPUT_DIR}/regression_coefficients.png")
+    plot_regression_coefficients(regression_results, f"{OUTPUT_DIR}/step_12_regression_coefficients.png")
 
     # Save all results
-    results['loadings'].to_csv(f"{OUTPUT_DIR}/factor_loadings.csv")
-    results['communalities'].to_csv(f"{OUTPUT_DIR}/communalities.csv")
-    factor_scores.to_csv(f"{OUTPUT_DIR}/factor_scores.csv", index=False)
+    results['loadings'].to_csv(f"{OUTPUT_DIR}/step_07_factor_loadings.csv")
+    results['communalities'].to_csv(f"{OUTPUT_DIR}/step_07_communalities.csv")
+    factor_scores.to_csv(f"{OUTPUT_DIR}/step_09_factor_scores.csv", index=False)
     print(f"\nResults saved to {OUTPUT_DIR}/ directory")
 
     print("\n" + "="*50)
